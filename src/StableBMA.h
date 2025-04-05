@@ -135,6 +135,8 @@ public:
     bool defaultConfig(bool LowPower = true);   // This is the default Configuration settings removed from Watchy::_bmaConfig(), corrected based on needs of RTCType.  _bmaConfig() should only consist of the begin() call and after that, the defaultConfig().
     bool enableDoubleClickWake(bool en = true); // Enables/Disables DoubleClick and the Wake Interrupt
     bool enableTiltWake(bool en = true);        // Enables/Disables Tilt and the Wake Interrupt
+    bool __init;
+    struct bma4_dev __devFptr;
 
 private:
     bma4_com_fptr_t __readRegisterFptr;
@@ -144,7 +146,5 @@ private:
     uint8_t __address;
     uint8_t __atchyVersion;
     uint16_t __IRQ_MASK;
-    bool __init;
-    struct bma4_dev __devFptr;
     uint16_t __whichBma;
 };
