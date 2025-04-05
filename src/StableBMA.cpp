@@ -566,7 +566,11 @@ bool StableBMA::defaultConfig(bool LowPower)
     config.od = BMA4_PUSH_PULL;
     config.output_en = BMA4_OUTPUT_ENABLE;
     config.input_en = BMA4_INPUT_DISABLE;
-    cfg.odr = BMA4_OUTPUT_DATA_RATE_100HZ;
+    if(LowPower == true) {
+        cfg.odr = BMA4_OUTPUT_DATA_RATE_50HZ;
+    } else {
+        cfg.odr = BMA4_OUTPUT_DATA_RATE_100HZ;
+    }
     cfg.range = BMA4_ACCEL_RANGE_2G;
     cfg.bandwidth = BMA4_ACCEL_NORMAL_AVG4;
     cfg.perf_mode = (LowPower ? BMA4_CIC_AVG_MODE : BMA4_CONTINUOUS_MODE); // Testing for Low Power done by Michal Szczepaniak
