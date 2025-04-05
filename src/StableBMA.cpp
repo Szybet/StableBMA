@@ -393,7 +393,7 @@ bool StableBMA::enableFeature(uint8_t feature, uint8_t enable)
         {
             bma456_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr);
         }
-        return (BMA4_OK == bma423_feature_enable(feature, enable, &__devFptr));
+        return (BMA4_OK == bma456_feature_enable(feature, enable, &__devFptr));
     }
     return false;
 }
