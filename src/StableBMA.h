@@ -56,6 +56,7 @@
 #endif
 
 #include "bma423.h"
+#include "bma456.h"
 
 #ifndef WATCHY_H
 enum {
@@ -80,12 +81,8 @@ public:
     StableBMA();
     ~StableBMA();
 
-    bool begin(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, 
-               bma4_delay_fptr_t delayCallBlack, uint8_t RTCType,
-               uint8_t address = BMA4_I2C_ADDR_PRIMARY,
-               bool usesHIGHINT = true,
-               uint8_t BMA423_INT1_PIN = 14, uint8_t BMA423_INT2_PIN = 12);
-               // Same as original but requires an RTCType and INT PINS from WatchyRTC or SmallRTC.
+    bool begin(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, bma4_delay_fptr_t delayCallBlack, uint8_t atchyVersion,
+               uint8_t address = BMA4_I2C_ADDR_PRIMARY, bool usesHIGHINT = true, uint8_t BMA_INT1_PIN = 14, uint8_t BMA_INT2_PIN = 12, uint16_t whichBma = 423);  // Same as original but requires an RTCType and INT PINS from WatchyRTC or SmallRTC.
 
     void softReset();  // Same as original.
     void shutDown();   // Same as original.
@@ -126,6 +123,7 @@ public:
 
     const char *getActivity(); // Same as original.
     bool setRemapAxes(struct bma423_axes_remap *remap_data); // Same as original.
+    bool setRemapAxes(struct bma456_axes_remap *remap_data); // Same as original.
 
     bool enableFeature(uint8_t feature, uint8_t enable ); // Same as original.
     bool enableStepCountInterrupt(bool en = true);        // Same as original.
@@ -144,8 +142,9 @@ private:
     bma4_delay_fptr_t __delayCallBlackFptr;
 
     uint8_t __address;
-    uint8_t __RTCTYPE;
+    uint8_t __atchyVersion;
     uint16_t __IRQ_MASK;
     bool __init;
     struct bma4_dev __devFptr;
+    uint16_t __whichBma;
 };
