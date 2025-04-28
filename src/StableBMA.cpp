@@ -182,7 +182,7 @@ bool StableBMA::selfTest()
         return false;
     }
     damagedAcc = !(BMA4_OK == bma4_selftest_config(BMA4_ACCEL_SELFTEST_ENABLE_MSK, &__devFptr4));
-    return damagedAcc;
+    return !damagedAcc;
 }
 
 uint8_t StableBMA::getDirection()
