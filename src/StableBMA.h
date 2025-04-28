@@ -46,19 +46,12 @@
  * github:https://github.com/lewisxhe/BMA423_Library
 */
 
-#ifndef STABLEBMA_H_INCLUDED
-#define STABLEBMA_H_INCLUDED
-
-#ifdef  ARDUINO
 #include <Arduino.h>
-#else
-#include <stdlib.h>
-#endif
 
 #include "bma423.h"
 #include "bma456.h"
+#include "bma530.h"
 
-#ifndef WATCHY_H
 enum {
     DIRECTION_TOP_EDGE        = 0,
     DIRECTION_BOTTOM_EDGE     = 1,
@@ -67,12 +60,18 @@ enum {
     DIRECTION_DISP_UP         = 4,
     DIRECTION_DISP_DOWN       = 5
 } ;
-#endif
 
-typedef struct bma4_accel Accel;
-typedef struct bma4_accel_config Acfg;
-
-#endif
+struct Accel {
+    /*! Accel X data */
+    int16_t x;
+    /*! Accel Y data */
+    int16_t y;
+    /*! Accel Z data */
+    int16_t z;
+};
+  
+typedef struct bma4_accel_config A4cfg;
+typedef struct bma5_acc_conf A5cfg;
 
 class StableBMA
 {
@@ -81,8 +80,8 @@ public:
     StableBMA();
     ~StableBMA();
 
-    bool begin(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, bma4_delay_fptr_t delayCallBlack, uint8_t atchyVersion,
-               uint8_t address = BMA4_I2C_ADDR_PRIMARY, bool usesHIGHINT = true, uint8_t BMA_INT1_PIN = 14, uint8_t BMA_INT2_PIN = 12, uint16_t whichBma = 423);  // Same as original but requires an RTCType and INT PINS from WatchyRTC or SmallRTC.
+    bool begin4(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, uint8_t atchyVersion,
+               uint8_t address = BMA4_I2C_ADDR_PRIMARY, uint16_t whichBma = 423);  // Same as original but requires an RTCType and INT PINS from WatchyRTC or SmallRTC.
 
     void softReset();  // Same as original.
     void shutDown();   // Same as original.
@@ -92,9 +91,9 @@ public:
     uint8_t getDirection();  // Same as original except it is orientated to show the proper higher edge on your Watchy.
     bool IsUp();             // Returns True if your Watchy is in the Tilt position (with flexible room).
 
-    bool setAccelConfig(Acfg &cfg);    // Same as original.
-    bool getAccelConfig(Acfg &cfg);    // Same as original.
-    bool getAccel(Accel &acc);         // Same as original with the exception that it inverts the x and y axes on the necessary RTCType.
+    bool setAccelConfig(A4cfg &cfg);    // Same as original.
+    bool getAccelConfig(A4cfg &cfg);    // Same as original.
+    bool getAccel(Accel* acc);         // Same as original with the exception that it inverts the x and y axes on the necessary RTCType.
     bool getAccelEnable();             // Same as original.
     bool disableAccel();               // Same as original.
     bool enableAccel(bool en = true);  // Same as original.
@@ -109,7 +108,7 @@ public:
     bool isTilt();        // Same as original.  Can be used AFTER didBMAWakeUp(wakeupBit) to determine if this is true or not.
     bool isActivity();    // Same as original.  Can be used AFTER didBMAWakeUp(wakeupBit) to determine if this is true or not.
     bool isAnyNoMotion(); // Same as original.  Can be used AFTER didBMAWakeUp(wakeupBit) to determine if this is true or not.
-    bool didBMAWakeUp(uint64_t hwWakeup); // Allows you to tell via wakeupBit, if the BMA woke the Watchy, if it did, it reads the reason so you can use the above 4 functions.
+    // bool didBMAWakeUp(uint64_t hwWakeup); // Allows you to tell via wakeupBit, if the BMA woke the Watchy, if it did, it reads the reason so you can use the above 4 functions.
 
     bool resetStepCounter();  // Same as original.
     uint32_t getCounter();    // Same as original.
@@ -122,8 +121,8 @@ public:
     uint32_t getSensorTime(); // Same as original.
 
     const char *getActivity(); // Same as original.
-    bool setRemapAxes(struct bma423_axes_remap *remap_data); // Same as original.
-    bool setRemapAxes(struct bma456_axes_remap *remap_data); // Same as original.
+    bool setRemapAxes(bma423_axes_remap *remap_data); // Same as original.
+    bool setRemapAxes(bma456_axes_remap *remap_data); // Same as original.
 
     bool enableFeature(uint8_t feature, uint8_t enable ); // Same as original.
     bool enableStepCountInterrupt(bool en = true);        // Same as original.
@@ -131,18 +130,20 @@ public:
     bool enableWakeupInterrupt(bool en = true);           // Same as original.
     bool enableAnyNoMotionInterrupt(bool en = true);      // Same as original.
     bool enableActivityInterrupt(bool en = true);         // Same as original.
-    uint32_t WakeMask();   // Returns the necessary value to OR in the esp_sleep_enable_ext1_wakeup function to request BMA wakeups to work.
     bool defaultConfig(bool LowPower = true);   // This is the default Configuration settings removed from Watchy::_bmaConfig(), corrected based on needs of RTCType.  _bmaConfig() should only consist of the begin() call and after that, the defaultConfig().
     bool enableDoubleClickWake(bool en = true); // Enables/Disables DoubleClick and the Wake Interrupt
     bool enableTiltWake(bool en = true);        // Enables/Disables Tilt and the Wake Interrupt
     bool __init;
-    struct bma4_dev __devFptr;
+    bma4_dev __devFptr4;
+    bma5_dev __devFptr5;
+    uint8_t conditionBMA;
 
 private:
-    bma4_com_fptr_t __readRegisterFptr;
-    bma4_com_fptr_t __writeRegisterFptr;
-    bma4_delay_fptr_t __delayCallBlackFptr;
-
+    bma4_com_fptr_t __readRegisterFptr4;
+    bma4_com_fptr_t __writeRegisterFptr4;
+    bma5_read_fptr_t __readRegisterFptr5;
+    bma5_write_fptr_t __writeRegisterFptr5;
+    
     uint8_t __address;
     uint8_t __atchyVersion;
     uint16_t __IRQ_MASK;

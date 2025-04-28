@@ -53,153 +53,138 @@
 #define DEBUG(...)
 #endif
 #include <Arduino.h>
-// BMA For Tilt/DTap
-RTC_DATA_ATTR uint8_t BMA_INT1_PIN;
-RTC_DATA_ATTR uint8_t BMA_INT2_PIN;
-RTC_DATA_ATTR uint32_t BMA_INT1_MASK;
-RTC_DATA_ATTR uint32_t BMA_INT2_MASK;
-RTC_DATA_ATTR bool usingHIGHINT;
-
-// BMA condition
-RTC_DATA_ATTR uint8_t conditionBMA;
 
 #define BMA_423 423
 #define BMA_456 456
+#define BMA_530 530
 
 StableBMA::StableBMA()
 {
-    __readRegisterFptr = nullptr;
-    __writeRegisterFptr = nullptr;
-    __delayCallBlackFptr = nullptr;
-    __init = false;
+
 }
 
 StableBMA::~StableBMA() {}
 
-bool StableBMA::begin(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, bma4_delay_fptr_t delayCallBlack, uint8_t atchyVersion, uint8_t address, bool usesHIGHINT, uint8_t BMA_INT1_PIN, uint8_t BMA_INT2_PIN, uint16_t whichBma)
+bool StableBMA::begin4(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, uint8_t atchyVersion, uint8_t address, uint16_t whichBma)
 {
-    if (__init ||
-        readCallBlack == nullptr ||
+    if (readCallBlack == nullptr ||
         writeCallBlack == nullptr ||
-        delayCallBlack == nullptr ||
         atchyVersion == 0)
     {
         DEBUG("StableBMA: Arguments are wrong");
         return true;
     }
 
-    BMA_INT1_PIN = BMA_INT1_PIN;
-    BMA_INT2_PIN = BMA_INT2_PIN;
-    BMA_INT1_MASK = (1 << BMA_INT1_PIN);
-    BMA_INT2_MASK = (1 << BMA_INT2_PIN);
-    usingHIGHINT = usesHIGHINT;
     __whichBma = whichBma;
 
-    __readRegisterFptr = readCallBlack;
-    __writeRegisterFptr = writeCallBlack;
-    __delayCallBlackFptr = delayCallBlack;
     __atchyVersion = atchyVersion;
 
-    __devFptr.dev_addr = address;
-    __devFptr.interface = BMA4_I2C_INTERFACE;
-    __devFptr.bus_read = readCallBlack;
-    __devFptr.bus_write = writeCallBlack;
-    __devFptr.delay = delayCallBlack;
-    __devFptr.read_write_len = 8;
-    __devFptr.resolution = 12;
+    __devFptr4.dev_addr = address;
+    __devFptr4.interface = BMA4_I2C_INTERFACE;
+    
+    __readRegisterFptr4 = readCallBlack;
+    __writeRegisterFptr4 = writeCallBlack;
+    __devFptr4.bus_read = readCallBlack;
+    __devFptr4.bus_write = writeCallBlack;
+
+    __devFptr4.delay = vTaskDelay;
+    __devFptr4.read_write_len = 8;
+    __devFptr4.resolution = 12;
     if (__whichBma == BMA_423)
     {
-        __devFptr.feature_len = BMA423_FEATURE_SIZE;
+        __devFptr4.feature_len = BMA423_FEATURE_SIZE;
     }
     else if (__whichBma == BMA_456)
     {
-        __devFptr.feature_len = BMA456_FEATURE_SIZE;
+        __devFptr4.feature_len = BMA456_FEATURE_SIZE;
     }
 
     StableBMA::softReset();
 
-    __delayCallBlackFptr(20);
+    vTaskDelay(20);
 
     if (__whichBma == BMA_423)
     {
-        if (bma423_init(&__devFptr) != BMA4_OK)
+        if (bma423_init(&__devFptr4) != BMA4_OK)
         {
             DEBUG("BMA423 FAIL\n");
             return false;
         }
 
-        if (bma423_write_config_file(&__devFptr) != BMA4_OK)
+        if (bma423_write_config_file(&__devFptr4) != BMA4_OK)
         {
             DEBUG("BMA423 Write Config FAIL\n");
             return false;
         }
+        return true;
     }
     else if (__whichBma == BMA_456)
     {
-        if (bma456_init(&__devFptr) != BMA4_OK)
+        if (bma456_init(&__devFptr4) != BMA4_OK)
         {
             DEBUG("BMA456 FAIL\n");
             return false;
         }
 
-        if (bma456_write_config_file(&__devFptr) != BMA4_OK)
+        if (bma456_write_config_file(&__devFptr4) != BMA4_OK)
         {
             DEBUG("BMA456 Write Config FAIL\n");
             return false;
         }
+        return true;
+    } else {
+        DEBUG("No correct bma sellected");;
     }
 
-    __init = true;
-
-    return __init;
+    return false;
 }
 
 void StableBMA::softReset()
 {
     uint8_t reg = BMA4_RESET_ADDR;
-    __writeRegisterFptr(BMA4_I2C_ADDR_PRIMARY, BMA4_RESET_SET_MASK, &reg, 1);
+    __writeRegisterFptr4(BMA4_I2C_ADDR_PRIMARY, BMA4_RESET_SET_MASK, &reg, 1);
 }
 
 void StableBMA::shutDown()
 {
-    bma4_set_advance_power_save(BMA4_DISABLE, &__devFptr);
+    bma4_set_advance_power_save(BMA4_DISABLE, &__devFptr4);
 }
 
 void StableBMA::wakeUp()
 {
-    bma4_set_advance_power_save(BMA4_ENABLE, &__devFptr);
+    bma4_set_advance_power_save(BMA4_ENABLE, &__devFptr4);
 }
 
 uint16_t StableBMA::getErrorCode()
 {
     struct bma4_err_reg err;
-    uint16_t rslt = bma4_get_error_status(&err, &__devFptr);
+    uint16_t rslt = bma4_get_error_status(&err, &__devFptr4);
     return rslt;
 }
 
 uint16_t StableBMA::getStatus()
 {
     uint8_t status;
-    bma4_get_status(&status, &__devFptr);
+    bma4_get_status(&status, &__devFptr4);
     return status;
 }
 
 uint32_t StableBMA::getSensorTime()
 {
     uint32_t ms;
-    bma4_get_sensor_time(&ms, &__devFptr);
+    bma4_get_sensor_time(&ms, &__devFptr4);
     return ms;
 }
 
 bool StableBMA::selfTest()
 {
-    return (BMA4_OK == bma4_selftest_config(BMA4_ACCEL_SELFTEST_ENABLE_MSK, &__devFptr));
+    return (BMA4_OK == bma4_selftest_config(BMA4_ACCEL_SELFTEST_ENABLE_MSK, &__devFptr4));
 }
 
 uint8_t StableBMA::getDirection()
 {
     Accel acc;
-    if (!StableBMA::getAccel(acc))
+    if (!StableBMA::getAccel(&acc))
         return 0;
     uint16_t absX = abs(acc.x);
     uint16_t absY = abs(acc.y);
@@ -225,7 +210,7 @@ bool StableBMA::IsUp()
     bool b;
     if (conditionBMA & 1)
         return false; // Broken Accelerometer
-    if (!StableBMA::getAccel(acc))
+    if (!StableBMA::getAccel(&acc))
         return false;
     return (acc.x <= 0 && acc.x >= -700 && acc.y >= -300 && acc.y <= 300 && acc.z <= -750 && acc.z >= -1070);
 }
@@ -233,7 +218,7 @@ bool StableBMA::IsUp()
 float StableBMA::readTemperature(bool Metric)
 {
     int32_t data = 0;
-    bma4_get_temperature(&data, BMA4_DEG, &__devFptr);
+    bma4_get_temperature(&data, BMA4_DEG, &__devFptr4);
     float temp = (float)data / (float)BMA4_SCALE_TEMP;
     if (((data - 23) / BMA4_SCALE_TEMP) == 0x80)
         return 0;
@@ -245,20 +230,27 @@ float StableBMA::readTemperatureF()
     return StableBMA::readTemperature(false);
 }
 
-bool StableBMA::getAccel(Accel &acc)
+bool StableBMA::getAccel(Accel* acc)
 {
-    memset(&acc, 0, sizeof(acc));
-    if (conditionBMA & 1)
-        return false;
-    if (bma4_read_accel_xyz(&acc, &__devFptr) != BMA4_OK)
-    {
-        conditionBMA |= 1;
+    memset(acc, 0, sizeof(acc));
+    if (conditionBMA & 1) {
         return false;
     }
+    bma4_accel acc4 = {0};
+    if (bma4_read_accel_xyz(&acc4, &__devFptr4) != BMA4_OK)
+    {
+        conditionBMA |= 1;
+        DEBUG("Acc is damaged?");
+        return false;
+    }
+    acc->x = acc4.x;
+    acc->y = acc4.y;
+    acc->z = acc4.z;
+
     if (__atchyVersion != 1)
     {
-        acc.x = -acc.x;
-        acc.y = -acc.y;
+        acc->x = -acc->x;
+        acc->y = -acc->y;
     }
     return true;
 }
@@ -266,44 +258,44 @@ bool StableBMA::getAccel(Accel &acc)
 bool StableBMA::getAccelEnable()
 {
     uint8_t en;
-    bma4_get_accel_enable(&en, &__devFptr);
+    bma4_get_accel_enable(&en, &__devFptr4);
     return (en & BMA4_ACCEL_ENABLE_POS) == BMA4_ACCEL_ENABLE_POS;
 }
 
 bool StableBMA::disableAccel()
 {
-    return StableBMA::enableAccel(false);
+    return (BMA4_OK == bma4_set_accel_enable(false ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4));
 }
 
 bool StableBMA::enableAccel(bool en)
 {
-    return (BMA4_OK == bma4_set_accel_enable(en ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr));
+    return (BMA4_OK == bma4_set_accel_enable(true ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4));
 }
 
-bool StableBMA::setAccelConfig(Acfg &cfg)
+bool StableBMA::setAccelConfig(A4cfg &cfg)
 {
-    return (BMA4_OK == bma4_set_accel_config(&cfg, &__devFptr));
+    return (BMA4_OK == bma4_set_accel_config(&cfg, &__devFptr4));
 }
 
-bool StableBMA::getAccelConfig(Acfg &cfg)
+bool StableBMA::getAccelConfig(A4cfg &cfg)
 {
-    return (BMA4_OK == bma4_get_accel_config(&cfg, &__devFptr));
+    return (BMA4_OK == bma4_get_accel_config(&cfg, &__devFptr4));
 }
 
-bool StableBMA::setRemapAxes(struct bma423_axes_remap *remap_data)
+bool StableBMA::setRemapAxes(bma423_axes_remap *remap_data)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_set_remap_axes(remap_data, &__devFptr));
+        return (BMA4_OK == bma423_set_remap_axes(remap_data, &__devFptr4));
     } else {
         DEBUG("Wrong struct for wrong acc");
     }
     return false;
 }
 
-bool StableBMA::setRemapAxes(struct bma456_axes_remap *remap_data)
+bool StableBMA::setRemapAxes(bma456_axes_remap *remap_data)
 {
     if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_set_remap_axes(remap_data, &__devFptr));
+        return (BMA4_OK == bma456_set_remap_axes(remap_data, &__devFptr4));
     } else {
         DEBUG("Wrong struct for wrong acc");
     }
@@ -313,9 +305,9 @@ bool StableBMA::setRemapAxes(struct bma456_axes_remap *remap_data)
 bool StableBMA::resetStepCounter()
 {
     if(__whichBma == BMA_423) {
-        return BMA4_OK == bma423_reset_step_counter(&__devFptr);
+        return BMA4_OK == bma423_reset_step_counter(&__devFptr4);
     } else if(__whichBma == BMA_456) {
-        return BMA4_OK == bma456_reset_step_counter(&__devFptr);
+        return BMA4_OK == bma456_reset_step_counter(&__devFptr4);
     }
     return false;
 }
@@ -325,12 +317,12 @@ uint32_t StableBMA::getCounter()
     uint32_t stepCount;
 
     if(__whichBma == BMA_423) {
-        if (bma423_step_counter_output(&stepCount, &__devFptr) == BMA4_OK)
+        if (bma423_step_counter_output(&stepCount, &__devFptr4) == BMA4_OK)
         {
             return stepCount;
         }
     } else if(__whichBma == BMA_456) {
-        if (bma456_step_counter_output(&stepCount, &__devFptr) == BMA4_OK)
+        if (bma456_step_counter_output(&stepCount, &__devFptr4) == BMA4_OK)
         {
             return stepCount;
         }
@@ -342,15 +334,15 @@ uint32_t StableBMA::getCounter()
 
 bool StableBMA::setINTPinConfig(struct bma4_int_pin_config config, uint8_t pinMap)
 {
-    return BMA4_OK == bma4_set_int_pin_config(&config, pinMap, &__devFptr);
+    return BMA4_OK == bma4_set_int_pin_config(&config, pinMap, &__devFptr4);
 }
 
 bool StableBMA::getINT()
 {
     if(__whichBma == BMA_423) {
-        return bma423_read_int_status(&__IRQ_MASK, &__devFptr) == BMA4_OK;
+        return bma423_read_int_status(&__IRQ_MASK, &__devFptr4) == BMA4_OK;
     } else if(__whichBma == BMA_456) {
-        return bma456_read_int_status(&__IRQ_MASK, &__devFptr) == BMA4_OK;
+        return bma456_read_int_status(&__IRQ_MASK, &__devFptr4) == BMA4_OK;
     }
     return false;
 }
@@ -363,9 +355,9 @@ uint8_t StableBMA::getIRQMASK()
 bool StableBMA::disableIRQ(uint16_t int_map)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &__devFptr));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &__devFptr4));
     } else if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &__devFptr));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &__devFptr4));
     }
     return false;
 }
@@ -373,9 +365,9 @@ bool StableBMA::disableIRQ(uint16_t int_map)
 bool StableBMA::enableIRQ(uint16_t int_map)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &__devFptr));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &__devFptr4));
     } else if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &__devFptr));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &__devFptr4));
     }
     return false;
 }
@@ -385,15 +377,15 @@ bool StableBMA::enableFeature(uint8_t feature, uint8_t enable)
     if(__whichBma == BMA_423) {
         if ((feature & BMA423_STEP_CNTR) == BMA423_STEP_CNTR)
         {
-            bma423_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr);
+            bma423_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4);
         }
-        return (BMA4_OK == bma423_feature_enable(feature, enable, &__devFptr));
+        return (BMA4_OK == bma423_feature_enable(feature, enable, &__devFptr4));
     } else if(__whichBma == BMA_456) {
         if ((feature & BMA456_STEP_CNTR) == BMA456_STEP_CNTR)
         {
-            bma456_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr);
+            bma456_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4);
         }
-        return (BMA4_OK == bma456_feature_enable(feature, enable, &__devFptr));
+        return (BMA4_OK == bma456_feature_enable(feature, enable, &__devFptr4));
     }
     return false;
 }
@@ -449,22 +441,12 @@ bool StableBMA::isAnyNoMotion()
     return false;
 }
 
-bool StableBMA::didBMAWakeUp(uint64_t hwWakeup)
-{
-    bool B = (hwWakeup & BMA_INT1_MASK);
-    if (!B)
-        return B;
-    if (StableBMA::getINT())
-        return B;
-    return false;
-}
-
 bool StableBMA::enableStepCountInterrupt(bool en)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT, en, &__devFptr));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT, en, &__devFptr4));
     } else if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_STEP_CNTR_INT, en, &__devFptr));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_STEP_CNTR_INT, en, &__devFptr4));
     }
     return false;
 }
@@ -472,9 +454,9 @@ bool StableBMA::enableStepCountInterrupt(bool en)
 bool StableBMA::enableTiltInterrupt(bool en)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_TILT_INT, en, &__devFptr));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_TILT_INT, en, &__devFptr4));
     } else if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WRIST_TILT_INT, en, &__devFptr));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WRIST_TILT_INT, en, &__devFptr4));
     }
     return false;
 }
@@ -482,9 +464,9 @@ bool StableBMA::enableTiltInterrupt(bool en)
 bool StableBMA::enableWakeupInterrupt(bool en)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_WAKEUP_INT, en, &__devFptr));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_WAKEUP_INT, en, &__devFptr4));
     } else if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WAKEUP_INT, en, &__devFptr));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WAKEUP_INT, en, &__devFptr4));
     }
     return false;
 }
@@ -492,9 +474,9 @@ bool StableBMA::enableWakeupInterrupt(bool en)
 bool StableBMA::enableAnyNoMotionInterrupt(bool en)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ANY_NO_MOTION_INT, en, &__devFptr));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ANY_NO_MOTION_INT, en, &__devFptr4));
     } else if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ANY_NO_MOTION_INT, en, &__devFptr));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ANY_NO_MOTION_INT, en, &__devFptr4));
     }
     return false;
 }
@@ -502,9 +484,9 @@ bool StableBMA::enableAnyNoMotionInterrupt(bool en)
 bool StableBMA::enableActivityInterrupt(bool en)
 {
     if(__whichBma == BMA_423) {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ACTIVITY_INT, en, &__devFptr));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ACTIVITY_INT, en, &__devFptr4));
     } else if(__whichBma == BMA_456) {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ACTIVITY_INT, en, &__devFptr));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ACTIVITY_INT, en, &__devFptr4));
     }
     return false;
 }
@@ -513,7 +495,7 @@ const char *StableBMA::getActivity()
 {
     uint8_t activity;
     if(__whichBma == BMA_423) {
-        bma423_activity_output(&activity, &__devFptr);
+        bma423_activity_output(&activity, &__devFptr4);
         if (activity & BMA423_USER_STATIONARY)
         {
             return "BMA423_USER_STATIONARY";
@@ -531,7 +513,7 @@ const char *StableBMA::getActivity()
             return "BMA423_STATE_INVALID";
         }
     } else if(__whichBma == BMA_456) {
-        bma456_activity_output(&activity, &__devFptr);
+        bma456_activity_output(&activity, &__devFptr4);
         if (activity & BMA456_USER_STATIONARY)
         {
             return "BMA456_USER_STATIONARY";
@@ -552,17 +534,13 @@ const char *StableBMA::getActivity()
     return "None";
 }
 
-uint32_t StableBMA::WakeMask()
-{
-    return BMA_INT1_MASK;
-}
-
 bool StableBMA::defaultConfig(bool LowPower)
 {
     struct bma4_int_pin_config config;
-    Acfg cfg;
+    A4cfg cfg;
     config.edge_ctrl = BMA4_LEVEL_TRIGGER;
-    config.lvl = (usingHIGHINT ? BMA4_ACTIVE_HIGH : BMA4_ACTIVE_LOW);
+    // No support yet for interrupts!
+    // config.lvl = (usingHIGHINT ? BMA4_ACTIVE_HIGH : BMA4_ACTIVE_LOW);
     config.od = BMA4_PUSH_PULL;
     config.output_en = BMA4_OUTPUT_ENABLE;
     config.input_en = BMA4_INPUT_DISABLE;
@@ -579,7 +557,7 @@ bool StableBMA::defaultConfig(bool LowPower)
     {
         if (StableBMA::enableAccel())
         {
-            if (bma4_set_int_pin_config(&config, BMA4_INTR1_MAP, &__devFptr) != BMA4_OK)
+            if (bma4_set_int_pin_config(&config, BMA4_INTR1_MAP, &__devFptr4) != BMA4_OK)
             {
                 DEBUG("BMA423 DEF CFG FAIL\n");
                 return false;
