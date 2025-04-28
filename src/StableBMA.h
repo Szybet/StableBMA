@@ -86,6 +86,7 @@ public:
     void softReset();  // Same as original.
     void shutDown();   // Same as original.
     void wakeUp();     // Same as original.
+    // True if acc ok
     bool selfTest();   // Same as original.
 
     uint8_t getDirection();  // Same as original except it is orientated to show the proper higher edge on your Watchy.
@@ -133,10 +134,9 @@ public:
     bool defaultConfig(bool LowPower = true);   // This is the default Configuration settings removed from Watchy::_bmaConfig(), corrected based on needs of RTCType.  _bmaConfig() should only consist of the begin() call and after that, the defaultConfig().
     bool enableDoubleClickWake(bool en = true); // Enables/Disables DoubleClick and the Wake Interrupt
     bool enableTiltWake(bool en = true);        // Enables/Disables Tilt and the Wake Interrupt
-    bool __init;
     bma4_dev __devFptr4;
     bma5_dev __devFptr5;
-    uint8_t conditionBMA;
+    bool damagedAcc;
 
 private:
     bma4_com_fptr_t __readRegisterFptr4;

@@ -178,7 +178,11 @@ uint32_t StableBMA::getSensorTime()
 
 bool StableBMA::selfTest()
 {
-    return (BMA4_OK == bma4_selftest_config(BMA4_ACCEL_SELFTEST_ENABLE_MSK, &__devFptr4));
+    if(damagedAcc == true) {
+        return false;
+    }
+    damagedAcc = !(BMA4_OK == bma4_selftest_config(BMA4_ACCEL_SELFTEST_ENABLE_MSK, &__devFptr4));
+    return damagedAcc;
 }
 
 uint8_t StableBMA::getDirection()
@@ -208,10 +212,12 @@ bool StableBMA::IsUp()
 {
     Accel acc;
     bool b;
-    if (conditionBMA & 1)
-        return false; // Broken Accelerometer
-    if (!StableBMA::getAccel(&acc))
+    if (damagedAcc == true) {
         return false;
+    }
+    if (!StableBMA::getAccel(&acc)) {
+        return false;
+    }
     return (acc.x <= 0 && acc.x >= -700 && acc.y >= -300 && acc.y <= 300 && acc.z <= -750 && acc.z >= -1070);
 }
 
@@ -233,13 +239,13 @@ float StableBMA::readTemperatureF()
 bool StableBMA::getAccel(Accel* acc)
 {
     memset(acc, 0, sizeof(acc));
-    if (conditionBMA & 1) {
+    if (damagedAcc) {
         return false;
     }
     bma4_accel acc4 = {0};
     if (bma4_read_accel_xyz(&acc4, &__devFptr4) != BMA4_OK)
     {
-        conditionBMA |= 1;
+        damagedAcc = true;
         DEBUG("Acc is damaged?");
         return false;
     }
