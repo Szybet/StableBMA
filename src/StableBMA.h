@@ -80,8 +80,7 @@ public:
     StableBMA();
     ~StableBMA();
 
-    bool begin4(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, uint8_t atchyVersion,
-               uint8_t address = BMA4_I2C_ADDR_PRIMARY, uint16_t whichBma = 423);  // Same as original but requires an RTCType and INT PINS from WatchyRTC or SmallRTC.
+    bool begin4(uint8_t atchyVersion, uint8_t address, uint16_t whichBma, bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack);
 
     void softReset();  // Same as original.
     void shutDown();   // Same as original.

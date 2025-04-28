@@ -58,14 +58,11 @@
 #define BMA_456 456
 #define BMA_530 530
 
-StableBMA::StableBMA()
-{
+StableBMA::StableBMA(){}
 
-}
+StableBMA::~StableBMA(){}
 
-StableBMA::~StableBMA() {}
-
-bool StableBMA::begin4(bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack, uint8_t atchyVersion, uint8_t address, uint16_t whichBma)
+bool StableBMA::begin4(uint8_t atchyVersion, uint8_t address, uint16_t whichBma, bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack)
 {
     if (readCallBlack == nullptr ||
         writeCallBlack == nullptr ||
