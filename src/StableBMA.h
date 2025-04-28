@@ -97,7 +97,7 @@ public:
     bool getAccel(Accel* acc);         // Same as original with the exception that it inverts the x and y axes on the necessary RTCType.
     bool getAccelEnable();             // Same as original.
     bool disableAccel();               // Same as original.
-    bool enableAccel(bool en = true);  // Same as original.
+    bool enableAccel();  // Same as original.
 
     bool setINTPinConfig(struct bma4_int_pin_config config, uint8_t pinMap);  // Same as original.
     bool getINT();  // Same as original.

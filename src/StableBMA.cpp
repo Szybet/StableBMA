@@ -239,7 +239,7 @@ float StableBMA::readTemperatureF()
 bool StableBMA::getAccel(Accel* acc)
 {
     memset(acc, 0, sizeof(acc));
-    if (damagedAcc) {
+    if (damagedAcc == true) {
         return false;
     }
     bma4_accel acc4 = {0};
@@ -273,7 +273,7 @@ bool StableBMA::disableAccel()
     return (BMA4_OK == bma4_set_accel_enable(false ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4));
 }
 
-bool StableBMA::enableAccel(bool en)
+bool StableBMA::enableAccel()
 {
     return (BMA4_OK == bma4_set_accel_enable(true ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4));
 }
