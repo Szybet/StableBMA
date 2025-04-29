@@ -29,7 +29,7 @@
  * github:https://github.com/lewisxhe/BMA423_Library
  */
 
-#define DEBUG_LOGS 1
+#define DEBUG_LOGS 0
 #if DEBUG_LOGS
 #define DEBUGPORT Serial
 #endif

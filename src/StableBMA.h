@@ -83,7 +83,10 @@ public:
     bool setAccelConfig(bma4_accel_config &cfg);
     bool getAccelConfig(bma4_accel_config &cfg);
     bool getAccel(Accel *acc);
+<<<<<<< HEAD
     bool getAccelPure(Accel *acc); // Pure reading from the sensor - more precise on bma530, maybe bma456 too, still axis switched
+=======
+>>>>>>> 594575cd018f8219e04b6af40df45ab0e4e6bda4
     bool getAccelMPSS(AccelF *acc); // Meters per second square, only bma530
     bool getAccelEnable();
     bool disableAccel();
