@@ -1,23 +1,6 @@
 #include "StableBMA.h"
 
-/* Forked from bma.cpp by GuruSR (https://www.github.com/GuruSR/StableBMA)
- * This fork is to improve Watchy functionality based on board version
- * (via RTCType).
- *
- * Version 1.0, February  6, 2022 - Initial changes for Watchy usage.
- * Version 1.1, February  8, 2022 - Fixed readTemperatureF to show F properly.
- * Version 1.2, July     19, 2022 - Fixed readTemperatureF to include errors.
- *                                  License Update.
- * Version 1.3, December 31, 2023 - Added orientation for V3.0 and cleaned up
- *                                  temperature code.
- * Version 1.4, February 24, 2024 - Added Low Power mode to the
- *                                  defaultConfig().
- * Version 1.5, July      9, 2024 - Fixed wrong getAccel assignments and added
- *                                  conditionBMA.
- * Version 1.6, July     30, 2024 - Fixed V3 orientation, missing return and
- *                                  int level.
- *
- * MIT License
+/* MIT License
  *
  * Copyright (c) 2020 Lewis He
  * Copyright (c) 2022 for StableBMA GuruSR
@@ -46,13 +29,16 @@
  * github:https://github.com/lewisxhe/BMA423_Library
  */
 
+#define DEBUG_LOGS 1
+#if DEBUG_LOGS
 #define DEBUGPORT Serial
+#endif
+
 #ifdef DEBUGPORT
 #define DEBUG(format, ...) DEBUGPORT.printf(format "\n", ##__VA_ARGS__)
 #else
 #define DEBUG(...)
 #endif
-#include <Arduino.h>
 
 #define BMA_423 423
 #define BMA_456 456
@@ -72,7 +58,7 @@ bool StableBMA::begin4(uint8_t atchyVersion, uint8_t address, uint16_t whichBma,
         return false;
     }
 
-    __whichBma = whichBma;
+    _whichBma = whichBma;
 
     if (!(isBma423() || isBma456()))
     {
@@ -80,28 +66,28 @@ bool StableBMA::begin4(uint8_t atchyVersion, uint8_t address, uint16_t whichBma,
         assert(false);
     }
 
-    __atchyVersion = atchyVersion;
+    _atchyVersion = atchyVersion;
 
-    __devFptr4.dev_addr = address;
-    __address = address;
+    _devFptr4.dev_addr = address;
+    _address = address;
 
-    __devFptr4.interface = BMA4_I2C_INTERFACE;
+    _devFptr4.interface = BMA4_I2C_INTERFACE;
 
-    __readRegisterFptr4 = readCallBlack;
-    __writeRegisterFptr4 = writeCallBlack;
-    __devFptr4.bus_read = readCallBlack;
-    __devFptr4.bus_write = writeCallBlack;
+    _readRegisterFptr4 = readCallBlack;
+    _writeRegisterFptr4 = writeCallBlack;
+    _devFptr4.bus_read = readCallBlack;
+    _devFptr4.bus_write = writeCallBlack;
 
-    __devFptr4.delay = vTaskDelay;
-    __devFptr4.read_write_len = 8;
-    __devFptr4.resolution = 12;
+    _devFptr4.delay = vTaskDelay;
+    _devFptr4.read_write_len = 8;
+    _devFptr4.resolution = 12;
     if (isBma423())
     {
-        __devFptr4.feature_len = BMA423_FEATURE_SIZE;
+        _devFptr4.feature_len = BMA423_FEATURE_SIZE;
     }
     else if (isBma456())
     {
-        __devFptr4.feature_len = BMA456_FEATURE_SIZE;
+        _devFptr4.feature_len = BMA456_FEATURE_SIZE;
     }
 
     StableBMA::softReset();
@@ -110,13 +96,13 @@ bool StableBMA::begin4(uint8_t atchyVersion, uint8_t address, uint16_t whichBma,
 
     if (isBma423())
     {
-        if (bma423_init(&__devFptr4) != BMA4_OK)
+        if (bma423_init(&_devFptr4) != BMA4_OK)
         {
             DEBUG("BMA423 FAIL");
             return false;
         }
 
-        if (bma423_write_config_file(&__devFptr4) != BMA4_OK)
+        if (bma423_write_config_file(&_devFptr4) != BMA4_OK)
         {
             DEBUG("BMA423 Write Config FAIL");
             return false;
@@ -125,13 +111,13 @@ bool StableBMA::begin4(uint8_t atchyVersion, uint8_t address, uint16_t whichBma,
     }
     else if (isBma456())
     {
-        if (bma456_init(&__devFptr4) != BMA4_OK)
+        if (bma456_init(&_devFptr4) != BMA4_OK)
         {
             DEBUG("BMA456 FAIL");
             return false;
         }
 
-        if (bma456_write_config_file(&__devFptr4) != BMA4_OK)
+        if (bma456_write_config_file(&_devFptr4) != BMA4_OK)
         {
             DEBUG("BMA456 Write Config FAIL");
             return false;
@@ -158,7 +144,7 @@ bool StableBMA::begin5(uint8_t atchyVersion, uint8_t address, uint16_t whichBma,
         return false;
     }
 
-    __whichBma = whichBma;
+    _whichBma = whichBma;
 
     if (!(isBma530()))
     {
@@ -166,18 +152,18 @@ bool StableBMA::begin5(uint8_t atchyVersion, uint8_t address, uint16_t whichBma,
         assert(false);
     }
 
-    __atchyVersion = atchyVersion;
+    _atchyVersion = atchyVersion;
 
-    __devFptr5.bus_read = readCallBlack;
-    __devFptr5.bus_write = writeCallBlack;
-    __devFptr5.intf = BMA5_I2C_INTF;
-    __devFptr5.context = bma5_context::BMA5_WEARABLE;
-    __devFptr5.delay_us = bma5_delay_us;
-    __devFptr5.chip_id = BMA530_CHIP_ID;
-    __address = address;
-    __devFptr5.intf_ptr = &__address;
+    _devFptr5.bus_read = readCallBlack;
+    _devFptr5.bus_write = writeCallBlack;
+    _devFptr5.intf = BMA5_I2C_INTF;
+    _devFptr5.context = bma5_context::BMA5_WEARABLE;
+    _devFptr5.delay_us = bma5_delay_us;
+    _devFptr5.chip_id = BMA530_CHIP_ID;
+    _address = address;
+    _devFptr5.intf_ptr = &_address;
 
-    if (bma5Error(bma530_init(&__devFptr5)))
+    if (bma5Error(bma530_init(&_devFptr5)))
     {
         DEBUG("Failed to init bma5");
         return false;
@@ -193,54 +179,102 @@ void StableBMA::softReset()
     if (isBma423() || isBma456())
     {
         uint8_t reg = BMA4_RESET_ADDR;
-        __writeRegisterFptr4(BMA4_I2C_ADDR_PRIMARY, BMA4_RESET_SET_MASK, &reg, 1);
+        _writeRegisterFptr4(BMA4_I2C_ADDR_PRIMARY, BMA4_RESET_SET_MASK, &reg, 1);
     }
 
     if (isBma530())
     {
-        bma530_soft_reset(&__devFptr5);
+        bma530_soft_reset(&_devFptr5);
     }
 }
 
 void StableBMA::shutDown()
 {
-    bma4_set_advance_power_save(BMA4_DISABLE, &__devFptr4);
+    if (isBma423() || isBma456())
+    {
+        bma4_set_advance_power_save(BMA4_DISABLE, &_devFptr4);
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
 }
 
 void StableBMA::wakeUp()
 {
-    bma4_set_advance_power_save(BMA4_ENABLE, &__devFptr4);
+    if (isBma423() || isBma456())
+    {
+        bma4_set_advance_power_save(BMA4_ENABLE, &_devFptr4);
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
 }
 
 uint16_t StableBMA::getErrorCode()
 {
-    struct bma4_err_reg err;
-    uint16_t rslt = bma4_get_error_status(&err, &__devFptr4);
-    return rslt;
+    if (isBma423() || isBma456())
+    {
+        struct bma4_err_reg err;
+        uint16_t rslt = bma4_get_error_status(&err, &_devFptr4);
+        return rslt;
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
+    return 0;
 }
 
 uint16_t StableBMA::getStatus()
 {
-    uint8_t status;
-    bma4_get_status(&status, &__devFptr4);
-    return status;
+    if (isBma423() || isBma456())
+    {
+        uint8_t status;
+        bma4_get_status(&status, &_devFptr4);
+        return status;
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
+    return 0;
 }
 
 uint32_t StableBMA::getSensorTime()
 {
-    uint32_t ms;
-    bma4_get_sensor_time(&ms, &__devFptr4);
-    return ms;
+    if (isBma423() || isBma456())
+    {
+        uint32_t ms;
+        bma4_get_sensor_time(&ms, &_devFptr4);
+        return ms;
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
+    return 0;
 }
 
 bool StableBMA::selfTest()
 {
-    if (damagedAcc == true)
+    // Not implemented, for now it simply freezes the bma
+    return true;
+
+    if (isBma423() || isBma456())
     {
-        return false;
+        if (damagedAcc == true)
+        {
+            return false;
+        }
+        damagedAcc = !(BMA4_OK == bma4_selftest_config(BMA4_ACCEL_SELFTEST_ENABLE_MSK, &_devFptr4));
+        return !damagedAcc;
     }
-    damagedAcc = !(BMA4_OK == bma4_selftest_config(BMA4_ACCEL_SELFTEST_ENABLE_MSK, &__devFptr4));
-    return !damagedAcc;
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
 }
 
 uint8_t StableBMA::getDirection()
@@ -285,12 +319,20 @@ bool StableBMA::IsUp()
 
 float StableBMA::readTemperature(bool Metric)
 {
-    int32_t data = 0;
-    bma4_get_temperature(&data, BMA4_DEG, &__devFptr4);
-    float temp = (float)data / (float)BMA4_SCALE_TEMP;
-    if (((data - 23) / BMA4_SCALE_TEMP) == 0x80)
-        return 0;
-    return (Metric ? temp : (temp * 1.8 + 32.0));
+    if (isBma423() || isBma456())
+    {
+        int32_t data = 0;
+        bma4_get_temperature(&data, BMA4_DEG, &_devFptr4);
+        float temp = (float)data / (float)BMA4_SCALE_TEMP;
+        if (((data - 23) / BMA4_SCALE_TEMP) == 0x80)
+            return 0;
+        return (Metric ? temp : (temp * 1.8 + 32.0));
+    }
+    if (isBma530())
+    {
+        DEBUG("To my knowledge, bma530 doesn't have it");
+    }
+    return 0.0;
 }
 
 float StableBMA::readTemperatureF()
@@ -308,8 +350,7 @@ static float lsb_to_ms2(int16_t val, float g_range, uint8_t bit_width)
     return (GRAVITY_EARTH * val * g_range) / half_scale;
 }
 
-bool StableBMA::getAccel(Accel *acc)
-{
+bool StableBMA::getAccelPure(Accel *acc) {
     if (damagedAcc == true)
     {
         return false;
@@ -319,7 +360,7 @@ bool StableBMA::getAccel(Accel *acc)
     {
         memset(acc, 0, sizeof(acc));
         bma4_accel acc4 = {0};
-        if (bma4_read_accel_xyz(&acc4, &__devFptr4) != BMA4_OK)
+        if (bma4_read_accel_xyz(&acc4, &_devFptr4) != BMA4_OK)
         {
             damagedAcc = true;
             DEBUG("Acc is damaged?");
@@ -329,7 +370,7 @@ bool StableBMA::getAccel(Accel *acc)
         acc->y = acc4.y;
         acc->z = acc4.z;
 
-        if (__atchyVersion != 1)
+        if (_atchyVersion != 1)
         {
             acc->x = -acc->x;
             acc->y = -acc->y;
@@ -339,7 +380,7 @@ bool StableBMA::getAccel(Accel *acc)
     if (isBma530())
     {
         bma5_sensor_status status;
-        if (bma5Error(bma5_get_sensor_status(&status, &__devFptr5)))
+        if (bma5Error(bma5_get_sensor_status(&status, &_devFptr5)))
         {
             DEBUG("Failed to bma5_get_sensor_status");
             return false;
@@ -348,7 +389,7 @@ bool StableBMA::getAccel(Accel *acc)
         if (status.acc_data_rdy)
         {
             bma5_accel sens_data;
-            if (bma5Error(bma5_get_acc(&sens_data, &__devFptr5)))
+            if (bma5Error(bma5_get_acc(&sens_data, &_devFptr5)))
             {
                 DEBUG("Failed to bma5_get_acc");
                 return false;
@@ -357,7 +398,36 @@ bool StableBMA::getAccel(Accel *acc)
             acc->x = sens_data.x;
             acc->y = sens_data.y;
             acc->z = sens_data.z;
+
+            // Compability
+            acc->x = -acc->x;
+            acc->y = -acc->y;
         }
+    }
+
+    return true;
+}
+
+bool StableBMA::getAccel(Accel *acc)
+{
+    if(getAccelPure(acc) == false) {
+        DEBUG("Failed to get pure acc");
+        return false;
+    }
+
+    // For bma423 the max is +-2048, here we match it for compability for other acc
+
+    if(isBma456()) {
+        // Not tested if the range is right, should be!
+        acc->x = (acc->x * 2048) / 16383;
+        acc->y = (acc->y * 2048) / 16383;
+        acc->z = (acc->z * 2048) / 16383;
+    }
+
+    if(isBma530()) {
+        acc->x = (acc->x * 2048) / 32767;
+        acc->y = (acc->y * 2048) / 32767;
+        acc->z = (acc->z * 2048) / 32767;
     }
 
     return true;
@@ -384,23 +454,31 @@ bool StableBMA::getAccelMPSS(AccelF *acc)
 
 bool StableBMA::getAccelEnable()
 {
-    uint8_t en;
-    bma4_get_accel_enable(&en, &__devFptr4);
-    return (en & BMA4_ACCEL_ENABLE_POS) == BMA4_ACCEL_ENABLE_POS;
+    if (isBma423() || isBma456())
+    {
+        uint8_t en;
+        bma4_get_accel_enable(&en, &_devFptr4);
+        return (en & BMA4_ACCEL_ENABLE_POS) == BMA4_ACCEL_ENABLE_POS;
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
+    return false;
 }
 
 bool StableBMA::disableAccel()
 {
     if (isBma423() || isBma456())
     {
-        return (BMA4_OK == bma4_set_accel_enable(false ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4));
+        return (BMA4_OK == bma4_set_accel_enable(false ? BMA4_ENABLE : BMA4_DISABLE, &_devFptr4));
     }
 
     if (isBma530())
     {
         uint8_t sensor_ctrl = BMA5_SENSOR_CTRL_DISABLE;
 
-        if (bma5Error(bma5_set_acc_conf_0(sensor_ctrl, &__devFptr5)))
+        if (bma5Error(bma5_set_acc_conf_0(sensor_ctrl, &_devFptr5)))
         {
             DEBUG("Failed to disable accel for bma530");
             return false;
@@ -414,13 +492,13 @@ bool StableBMA::enableAccel()
 {
     if (isBma423() || isBma456())
     {
-        return (BMA4_OK == bma4_set_accel_enable(true ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4));
+        return (BMA4_OK == bma4_set_accel_enable(true ? BMA4_ENABLE : BMA4_DISABLE, &_devFptr4));
     }
     if (isBma530())
     {
         uint8_t sensor_ctrl = BMA5_SENSOR_CTRL_ENABLE;
 
-        if (bma5Error(bma5_set_acc_conf_0(sensor_ctrl, &__devFptr5)))
+        if (bma5Error(bma5_set_acc_conf_0(sensor_ctrl, &_devFptr5)))
         {
             DEBUG("Failed to enable accel for bma530");
             return false;
@@ -430,21 +508,37 @@ bool StableBMA::enableAccel()
     return false;
 }
 
-bool StableBMA::setAccelConfig(A4cfg &cfg)
+bool StableBMA::setAccelConfig(bma4_accel_config &cfg)
 {
-    return (BMA4_OK == bma4_set_accel_config(&cfg, &__devFptr4));
+    if (isBma423() || isBma456())
+    {
+        return (BMA4_OK == bma4_set_accel_config(&cfg, &_devFptr4));
+    }
+    if (isBma530())
+    {
+        DEBUG("Wrong BMA!");
+    }
+    return false;
 }
 
-bool StableBMA::getAccelConfig(A4cfg &cfg)
+bool StableBMA::getAccelConfig(bma4_accel_config &cfg)
 {
-    return (BMA4_OK == bma4_get_accel_config(&cfg, &__devFptr4));
+    if (isBma423() || isBma456())
+    {
+        return (BMA4_OK == bma4_get_accel_config(&cfg, &_devFptr4));
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
+    return false;
 }
 
 bool StableBMA::setRemapAxes(bma423_axes_remap *remap_data)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_set_remap_axes(remap_data, &__devFptr4));
+        return (BMA4_OK == bma423_set_remap_axes(remap_data, &_devFptr4));
     }
     else
     {
@@ -455,9 +549,9 @@ bool StableBMA::setRemapAxes(bma423_axes_remap *remap_data)
 
 bool StableBMA::setRemapAxes(bma456_axes_remap *remap_data)
 {
-    if (__whichBma == BMA_456)
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_set_remap_axes(remap_data, &__devFptr4));
+        return (BMA4_OK == bma456_set_remap_axes(remap_data, &_devFptr4));
     }
     else
     {
@@ -466,23 +560,95 @@ bool StableBMA::setRemapAxes(bma456_axes_remap *remap_data)
     return false;
 }
 
+static void feature_axis_selection(const struct bma530_feat_axis *conf)
+{
+#if DEBUG_LOGS
+    if ((conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_DEFAULT_0) ||
+        (conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_DEFAULT_6) || (conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_DEFAULT_7))
+    {
+        DEBUG("Selected axis : XYZ");
+    }
+
+    if (conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_YXZ)
+    {
+        DEBUG("Selected axis : YXZ");
+    }
+
+    if (conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_XZY)
+    {
+        DEBUG("Selected axis : XZY");
+    }
+
+    if (conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_ZXY)
+    {
+        DEBUG("Selected axis : ZXY");
+    }
+
+    if (conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_YZX)
+    {
+        DEBUG("Selected axis : YZX");
+    }
+
+    if (conf->feat_axis_ex == BMA530_FEAT_AXIS_EX_ZYX)
+    {
+        DEBUG("Selected axis : ZYX");
+    }
+
+    if (conf->feat_x_inv == BMA530_FEAT_X_INV_DEFAULT)
+    {
+        DEBUG("feat_x_inv : remains unchanged");
+    }
+    else
+    {
+        DEBUG("feat_x_inv : -X");
+    }
+
+    if (conf->feat_y_inv == BMA530_FEAT_Y_INV_DEFAULT)
+    {
+        DEBUG("feat_y_inv : remains unchanged");
+    }
+    else
+    {
+        DEBUG("feat_y_inv : -Y");
+    }
+
+    if (conf->feat_z_inv == BMA530_FEAT_Z_INV_DEFAULT)
+    {
+        DEBUG("feat_z_inv : remains unchanged");
+    }
+    else
+    {
+        DEBUG("feat_z_inv : -Z");
+    }
+#endif
+}
+
 bool StableBMA::setRemapAxes(bma530_feat_axis *remap_data)
 {
     if (isBma530())
     {
-        /*
-        bma530_feat_axis conf;
-        if(bma5Error(bma530_get_feature_axis_config(&conf, &__devFptr5))) {
-            DEBUG("Failed to bma530_get_feature_axis_config");
-            return false;
+        {
+            bma530_feat_axis conf;
+            if (bma5Error(bma530_get_feature_axis_config(&conf, &_devFptr5)))
+            {
+                DEBUG("Failed to bma530_get_feature_axis_config");
+                return false;
+            }
         }
-        */
 
-        if (bma5Error(bma530_set_feature_axis_config(remap_data, &__devFptr5)))
+        if (bma5Error(bma530_set_feature_axis_config(remap_data, &_devFptr5)))
         {
             DEBUG("Failed to bma530_set_feature_axis_config");
             return false;
         }
+
+        bma530_feat_axis conf;
+        if (bma5Error(bma530_get_feature_axis_config(&conf, &_devFptr5)))
+        {
+            DEBUG("Failed to bma530_get_feature_axis_config");
+            return false;
+        }
+        feature_axis_selection(&conf);
 
         return true;
     }
@@ -497,11 +663,11 @@ bool StableBMA::resetStepCounter()
 {
     if (isBma423())
     {
-        return BMA4_OK == bma423_reset_step_counter(&__devFptr4);
+        return BMA4_OK == bma423_reset_step_counter(&_devFptr4);
     }
     if (isBma456())
     {
-        return BMA4_OK == bma456_reset_step_counter(&__devFptr4);
+        return BMA4_OK == bma456_reset_step_counter(&_devFptr4);
     }
     if (isBma530())
     {
@@ -519,14 +685,14 @@ uint32_t StableBMA::getCounter()
 
     if (isBma423())
     {
-        if (bma423_step_counter_output(&stepCount, &__devFptr4) == BMA4_OK)
+        if (bma423_step_counter_output(&stepCount, &_devFptr4) == BMA4_OK)
         {
             return stepCount;
         }
     }
     if (isBma456())
     {
-        if (bma456_step_counter_output(&stepCount, &__devFptr4) == BMA4_OK)
+        if (bma456_step_counter_output(&stepCount, &_devFptr4) == BMA4_OK)
         {
             return stepCount;
         }
@@ -535,7 +701,7 @@ uint32_t StableBMA::getCounter()
     if (isBma530())
     {
         bma530_feat_eng_feat_out feat_out = {0};
-        if (bma5Error(bma530_get_feat_eng_feature_out(&feat_out, &__devFptr5)))
+        if (bma5Error(bma530_get_feat_eng_feature_out(&feat_out, &_devFptr5)))
         {
             DEBUG("Failed to bma530_get_feat_eng_feature_out");
             return 0;
@@ -551,201 +717,290 @@ uint32_t StableBMA::getCounter()
 
 bool StableBMA::setINTPinConfig(struct bma4_int_pin_config config, uint8_t pinMap)
 {
-    return BMA4_OK == bma4_set_int_pin_config(&config, pinMap, &__devFptr4);
+    if (isBma423() || isBma456())
+    {
+        return BMA4_OK == bma4_set_int_pin_config(&config, pinMap, &_devFptr4);
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
+    return false;
 }
 
 bool StableBMA::getINT()
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return bma423_read_int_status(&__IRQ_MASK, &__devFptr4) == BMA4_OK;
+        return bma423_read_int_status(&_IRQ_MASK, &_devFptr4) == BMA4_OK;
     }
-    else if (__whichBma == BMA_456)
+    if (isBma456())
     {
-        return bma456_read_int_status(&__IRQ_MASK, &__devFptr4) == BMA4_OK;
+        return bma456_read_int_status(&_IRQ_MASK, &_devFptr4) == BMA4_OK;
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 uint8_t StableBMA::getIRQMASK()
 {
-    return __IRQ_MASK;
+    return _IRQ_MASK;
 }
 
 bool StableBMA::disableIRQ(uint16_t int_map)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &__devFptr4));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &__devFptr4));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_DISABLE, &_devFptr4));
+    }
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableIRQ(uint16_t int_map)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &__devFptr4));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &__devFptr4));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, int_map, BMA4_ENABLE, &_devFptr4));
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableFeature(uint8_t feature, uint8_t enable)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
         if ((feature & BMA423_STEP_CNTR) == BMA423_STEP_CNTR)
         {
-            bma423_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4);
+            bma423_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &_devFptr4);
         }
-        return (BMA4_OK == bma423_feature_enable(feature, enable, &__devFptr4));
+        return (BMA4_OK == bma423_feature_enable(feature, enable, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
         if ((feature & BMA456_STEP_CNTR) == BMA456_STEP_CNTR)
         {
-            bma456_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &__devFptr4);
+            bma456_step_detector_enable(enable ? BMA4_ENABLE : BMA4_DISABLE, &_devFptr4);
         }
-        return (BMA4_OK == bma456_feature_enable(feature, enable, &__devFptr4));
+        return (BMA4_OK == bma456_feature_enable(feature, enable, &_devFptr4));
     }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
+
     return false;
 }
 
 bool StableBMA::isStepCounter()
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (bool)(BMA423_STEP_CNTR_INT & __IRQ_MASK);
+        return (bool)(BMA423_STEP_CNTR_INT & _IRQ_MASK);
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (bool)(BMA456_STEP_CNTR_INT & __IRQ_MASK);
+        return (bool)(BMA456_STEP_CNTR_INT & _IRQ_MASK);
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::isDoubleClick()
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (bool)(BMA423_WAKEUP_INT & __IRQ_MASK);
+        return (bool)(BMA423_WAKEUP_INT & _IRQ_MASK);
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (bool)(BMA456_WAKEUP_INT & __IRQ_MASK);
+        return (bool)(BMA456_WAKEUP_INT & _IRQ_MASK);
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::isTilt()
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (bool)(BMA423_TILT_INT & __IRQ_MASK);
+        return (bool)(BMA423_TILT_INT & _IRQ_MASK);
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
         DEBUG("Not sure");
-        return (bool)(BMA456_WRIST_TILT_INT & __IRQ_MASK); // Not sure
+        return (bool)(BMA456_WRIST_TILT_INT & _IRQ_MASK); // Not sure
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::isActivity()
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (bool)(BMA423_ACTIVITY_INT & __IRQ_MASK);
+        return (bool)(BMA423_ACTIVITY_INT & _IRQ_MASK);
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (bool)(BMA456_ACTIVITY_INT & __IRQ_MASK);
+        return (bool)(BMA456_ACTIVITY_INT & _IRQ_MASK);
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::isAnyNoMotion()
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (bool)(BMA423_ANY_NO_MOTION_INT & __IRQ_MASK);
+        return (bool)(BMA423_ANY_NO_MOTION_INT & _IRQ_MASK);
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (bool)(BMA456_ANY_NO_MOTION_INT & __IRQ_MASK);
+        return (bool)(BMA456_ANY_NO_MOTION_INT & _IRQ_MASK);
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableStepCountInterrupt(bool en)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT, en, &__devFptr4));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT, en, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_STEP_CNTR_INT, en, &__devFptr4));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_STEP_CNTR_INT, en, &_devFptr4));
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableTiltInterrupt(bool en)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_TILT_INT, en, &__devFptr4));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_TILT_INT, en, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WRIST_TILT_INT, en, &__devFptr4));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WRIST_TILT_INT, en, &_devFptr4));
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableWakeupInterrupt(bool en)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_WAKEUP_INT, en, &__devFptr4));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_WAKEUP_INT, en, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WAKEUP_INT, en, &__devFptr4));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_WAKEUP_INT, en, &_devFptr4));
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableAnyNoMotionInterrupt(bool en)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ANY_NO_MOTION_INT, en, &__devFptr4));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ANY_NO_MOTION_INT, en, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ANY_NO_MOTION_INT, en, &__devFptr4));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ANY_NO_MOTION_INT, en, &_devFptr4));
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableActivityInterrupt(bool en)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ACTIVITY_INT, en, &__devFptr4));
+        return (BMA4_OK == bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_ACTIVITY_INT, en, &_devFptr4));
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ACTIVITY_INT, en, &__devFptr4));
+        return (BMA4_OK == bma456_map_interrupt(BMA4_INTR1_MAP, BMA456_ACTIVITY_INT, en, &_devFptr4));
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
@@ -753,9 +1008,9 @@ bool StableBMA::enableActivityInterrupt(bool en)
 const char *StableBMA::getActivity()
 {
     uint8_t activity;
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
-        bma423_activity_output(&activity, &__devFptr4);
+        bma423_activity_output(&activity, &_devFptr4);
         if (activity & BMA423_USER_STATIONARY)
         {
             return "BMA423_USER_STATIONARY";
@@ -773,9 +1028,10 @@ const char *StableBMA::getActivity()
             return "BMA423_STATE_INVALID";
         }
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
-        bma456_activity_output(&activity, &__devFptr4);
+        bma456_activity_output(&activity, &_devFptr4);
         if (activity & BMA456_USER_STATIONARY)
         {
             return "BMA456_USER_STATIONARY";
@@ -793,13 +1049,18 @@ const char *StableBMA::getActivity()
             return "BMA456_STATE_INVALID";
         }
     }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
+    }
     return "None";
 }
 
 bool StableBMA::defaultConfig4(bool LowPower)
 {
     struct bma4_int_pin_config config;
-    A4cfg cfg;
+    bma4_accel_config cfg;
     config.edge_ctrl = BMA4_LEVEL_TRIGGER;
     // No support yet for interrupts!
     // config.lvl = (usingHIGHINT ? BMA4_ACTIVE_HIGH : BMA4_ACTIVE_LOW);
@@ -822,7 +1083,7 @@ bool StableBMA::defaultConfig4(bool LowPower)
     {
         if (StableBMA::enableAccel())
         {
-            if (bma4_set_int_pin_config(&config, BMA4_INTR1_MAP, &__devFptr4) != BMA4_OK)
+            if (bma4_set_int_pin_config(&config, BMA4_INTR1_MAP, &_devFptr4) != BMA4_OK)
             {
                 DEBUG("BMA423 DEF CFG FAIL");
                 return false;
@@ -834,24 +1095,24 @@ bool StableBMA::defaultConfig4(bool LowPower)
             enableWakeupInterrupt(false);
             enableTiltInterrupt(false);
             enableStepCountInterrupt(false);
-            if (__whichBma == BMA_423)
+            if (_whichBma == BMA_423)
             {
                 struct bma423_axes_remap remap_data;
                 remap_data.x_axis = 1;
-                remap_data.x_axis_sign = (__atchyVersion == 1 || __atchyVersion == 3 ? 1 : 0);
+                remap_data.x_axis_sign = (_atchyVersion == 1 || _atchyVersion == 3 ? 1 : 0);
                 remap_data.y_axis = 0;
-                remap_data.y_axis_sign = (__atchyVersion == 1 ? 1 : 0);
+                remap_data.y_axis_sign = (_atchyVersion == 1 ? 1 : 0);
                 remap_data.z_axis = 2;
                 remap_data.z_axis_sign = 1;
                 return StableBMA::setRemapAxes(&remap_data);
             }
-            else if (__whichBma == BMA_456)
+            else if (_whichBma == BMA_456)
             {
                 struct bma456_axes_remap remap_data;
                 remap_data.x_axis = 1;
-                remap_data.x_axis_sign = (__atchyVersion == 1 || __atchyVersion == 3 ? 1 : 0);
+                remap_data.x_axis_sign = (_atchyVersion == 1 || _atchyVersion == 3 ? 1 : 0);
                 remap_data.y_axis = 0;
-                remap_data.y_axis_sign = (__atchyVersion == 1 ? 1 : 0);
+                remap_data.y_axis_sign = (_atchyVersion == 1 ? 1 : 0);
                 remap_data.z_axis = 2;
                 remap_data.z_axis_sign = 1;
                 return StableBMA::setRemapAxes(&remap_data);
@@ -864,7 +1125,7 @@ bool StableBMA::defaultConfig4(bool LowPower)
 bool StableBMA::defaultConfig5(bool LowPower)
 {
     bma5_acc_conf acc_cfg;
-    if (bma5Error(bma5_get_acc_conf(&acc_cfg, &__devFptr5)))
+    if (bma5Error(bma5_get_acc_conf(&acc_cfg, &_devFptr5)))
     {
         DEBUG("Failed to get acc conf");
         return false;
@@ -880,25 +1141,23 @@ bool StableBMA::defaultConfig5(bool LowPower)
     acc_cfg.noise_mode = BMA5_NOISE_MODE_LOWER_POWER;
     acc_cfg.acc_drdy_int_auto_clear = BMA5_ACC_DRDY_INT_AUTO_CLEAR_ENABLED;
 
-    if (bma5Error(bma5_set_acc_conf(&acc_cfg, &__devFptr5)))
+    if (bma5Error(bma5_set_acc_conf(&acc_cfg, &_devFptr5)))
     {
         DEBUG("Failed to set acc conf");
         return false;
     }
 
-    /*
     bma530_feat_axis remap_data;
-    remap_data.feat_axis_ex = BMA530_FEAT_AXIS_EX_ZXY;
-    remap_data.feat_x_inv = BMA530_FEAT_X_INV_INVERT;
-    remap_data.feat_y_inv = BMA530_FEAT_Y_INV_INVERT;
+    remap_data.feat_axis_ex = BMA530_FEAT_AXIS_EX_YXZ;
+    remap_data.feat_x_inv = BMA530_FEAT_X_INV_DEFAULT;
+    remap_data.feat_y_inv = BMA530_FEAT_Y_INV_DEFAULT;
     remap_data.feat_z_inv = BMA530_FEAT_Z_INV_INVERT;
 
-    if (bma5Error(setRemapAxes(&remap_data)))
+    if (setRemapAxes(&remap_data) == false)
     {
         DEBUG("Failed to remap axes");
         return false;
     }
-    */
 
     DEBUG("Succ for def conf bma5");
     return true;
@@ -919,37 +1178,57 @@ bool StableBMA::defaultConfig(bool LowPower)
 
 bool StableBMA::enableDoubleClickWake(bool en)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
         if (StableBMA::enableFeature(BMA423_WAKEUP, en))
+        {
             return StableBMA::enableWakeupInterrupt(en);
+        }
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
         if (StableBMA::enableFeature(BMA456_WAKEUP, en))
+        {
             return StableBMA::enableWakeupInterrupt(en);
+        }
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::enableTiltWake(bool en)
 {
-    if (__whichBma == BMA_423)
+    if (isBma423())
     {
         if (StableBMA::enableFeature(BMA423_TILT, en))
+        {
             return StableBMA::enableTiltInterrupt(en);
+        }
     }
-    else if (__whichBma == BMA_456)
+
+    if (isBma456())
     {
         if (StableBMA::enableFeature(BMA456_WRIST_TILT_INT, en))
+        {
             return StableBMA::enableTiltInterrupt(en);
+        }
+    }
+
+    if (isBma530())
+    {
+        DEBUG("Not implemented!");
     }
     return false;
 }
 
 bool StableBMA::isBma423()
 {
-    if (__whichBma == BMA_423)
+    if (_whichBma == BMA_423)
     {
         return true;
     }
@@ -958,7 +1237,7 @@ bool StableBMA::isBma423()
 
 bool StableBMA::isBma456()
 {
-    if (__whichBma == BMA_456)
+    if (_whichBma == BMA_456)
     {
         return true;
     }
@@ -967,7 +1246,7 @@ bool StableBMA::isBma456()
 
 bool StableBMA::isBma530()
 {
-    if (__whichBma == BMA_530)
+    if (_whichBma == BMA_530)
     {
         return true;
     }
@@ -1023,26 +1302,26 @@ bool StableBMA::enableStepCount()
         bma530_step_cntr conf = {0};
         uint8_t gpr_ctrl_host = BMA5_ENABLE;
 
-        if (bma5Error(bma530_get_feat_eng_gpr_0(&gpr_0, &__devFptr5)))
+        if (bma5Error(bma530_get_feat_eng_gpr_0(&gpr_0, &_devFptr5)))
         {
             DEBUG("Failed to bma530_get_feat_eng_gpr_0");
             return false;
         }
         gpr_0.step_en = BMA5_ENABLE;
 
-        if (bma5Error(bma530_set_feat_eng_gpr_0(&gpr_0, &__devFptr5)))
+        if (bma5Error(bma530_set_feat_eng_gpr_0(&gpr_0, &_devFptr5)))
         {
             DEBUG("Failed to bma530_set_feat_eng_gpr_0");
             return false;
         }
 
-        if (bma5Error(bma5_set_regs(BMA5_REG_FEAT_ENG_GPR_CTRL, &gpr_ctrl_host, 1, &__devFptr5)))
+        if (bma5Error(bma5_set_regs(BMA5_REG_FEAT_ENG_GPR_CTRL, &gpr_ctrl_host, 1, &_devFptr5)))
         {
             DEBUG("Failed to bma5_set_regs(BMA5_REG_FEAT_ENG_GPR_CTRL");
             return false;
         }
 
-        if (bma5Error(bma530_get_default_step_counter_config(&conf, &__devFptr5)))
+        if (bma5Error(bma530_get_default_step_counter_config(&conf, &_devFptr5)))
         {
             DEBUG("Failed to bma530_get_default_step_counter_config");
             return false;
@@ -1081,7 +1360,7 @@ bool StableBMA::enableStepCount()
 
         conf.watermark_level = 1;
 
-        if (bma5Error(bma530_set_step_counter_config(&conf, &__devFptr5)))
+        if (bma5Error(bma530_set_step_counter_config(&conf, &_devFptr5)))
         {
             DEBUG("Failed to bma530_set_step_counter_config");
             return false;
