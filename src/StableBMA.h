@@ -50,7 +50,9 @@
 
 #include "bma423.h"
 #include "bma456.h"
+
 #include "bma530.h"
+#include "bma530_features.h"
 
 enum {
     DIRECTION_TOP_EDGE        = 0,
@@ -62,12 +64,15 @@ enum {
 } ;
 
 struct Accel {
-    /*! Accel X data */
     int16_t x;
-    /*! Accel Y data */
     int16_t y;
-    /*! Accel Z data */
     int16_t z;
+};
+
+struct AccelF {
+    float x;
+    float y;
+    float z;
 };
   
 typedef struct bma4_accel_config A4cfg;
@@ -81,6 +86,7 @@ public:
     ~StableBMA();
 
     bool begin4(uint8_t atchyVersion, uint8_t address, uint16_t whichBma, bma4_com_fptr_t readCallBlack, bma4_com_fptr_t writeCallBlack);
+    bool begin5(uint8_t atchyVersion, uint8_t address, uint16_t whichBma, bma5_read_fptr_t readCallBlack, bma5_write_fptr_t writeCallBlack);
 
     void softReset();  // Same as original.
     void shutDown();   // Same as original.
@@ -93,7 +99,8 @@ public:
 
     bool setAccelConfig(A4cfg &cfg);    // Same as original.
     bool getAccelConfig(A4cfg &cfg);    // Same as original.
-    bool getAccel(Accel* acc);         // Same as original with the exception that it inverts the x and y axes on the necessary RTCType.
+    bool getAccel(Accel* acc);
+    bool getAccelMPSS(AccelF* acc); // Meters per second square, only bma530
     bool getAccelEnable();             // Same as original.
     bool disableAccel();               // Same as original.
     bool enableAccel();  // Same as original.
@@ -123,6 +130,7 @@ public:
     const char *getActivity(); // Same as original.
     bool setRemapAxes(bma423_axes_remap *remap_data); // Same as original.
     bool setRemapAxes(bma456_axes_remap *remap_data); // Same as original.
+    bool setRemapAxes(bma530_feat_axis *remap_data);
 
     bool enableFeature(uint8_t feature, uint8_t enable ); // Same as original.
     bool enableStepCountInterrupt(bool en = true);        // Same as original.
@@ -136,6 +144,7 @@ public:
     bma4_dev __devFptr4;
     bma5_dev __devFptr5;
     bool damagedAcc;
+    bool enableStepCount();
 
 private:
     bma4_com_fptr_t __readRegisterFptr4;
@@ -147,4 +156,12 @@ private:
     uint8_t __atchyVersion;
     uint16_t __IRQ_MASK;
     uint16_t __whichBma;
+    bool isBma423();
+    bool isBma456();
+    bool isBma530();
+
+    bool bma5Error(int8_t rslt);
+
+    bool defaultConfig4(bool LowPower = true);
+    bool defaultConfig5(bool LowPower = true);
 };
