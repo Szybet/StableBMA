@@ -519,7 +519,6 @@ uint32_t StableBMA::getCounter()
             return stepCount;
         }
     }
-
     if (isBma456())
     {
         if (bma456_step_counter_output(&stepCount, &__devFptr4) == BMA4_OK)
@@ -1003,7 +1002,6 @@ bool StableBMA::enableStepCount()
             return false;
         }
     }
-
     if (isBma456())
     {
         if (enableFeature(BMA456_STEP_CNTR, true) == false)
