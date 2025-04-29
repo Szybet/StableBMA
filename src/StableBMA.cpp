@@ -298,7 +298,7 @@ float StableBMA::readTemperatureF()
     return StableBMA::readTemperature(false);
 }
 
-#define GRAVITY_EARTH  (9.80665f)
+#define GRAVITY_EARTH (9.80665f)
 static float lsb_to_ms2(int16_t val, float g_range, uint8_t bit_width)
 {
     double power = 2;
@@ -339,16 +339,19 @@ bool StableBMA::getAccel(Accel *acc)
     if (isBma530())
     {
         bma5_sensor_status status;
-        if(bma5Error(bma5_get_sensor_status(&status, &__devFptr5))) {
+        if (bma5Error(bma5_get_sensor_status(&status, &__devFptr5)))
+        {
             DEBUG("Failed to bma5_get_sensor_status");
             return false;
         }
         // We do not clean the old data until new is here
-        if (status.acc_data_rdy) {
+        if (status.acc_data_rdy)
+        {
             bma5_accel sens_data;
-            if(bma5Error(bma5_get_acc(&sens_data, &__devFptr5))) {
+            if (bma5Error(bma5_get_acc(&sens_data, &__devFptr5)))
+            {
                 DEBUG("Failed to bma5_get_acc");
-                return false;    
+                return false;
             }
             memset(acc, 0, sizeof(acc));
             acc->x = sens_data.x;
@@ -360,11 +363,13 @@ bool StableBMA::getAccel(Accel *acc)
     return true;
 }
 
-bool StableBMA::getAccelMPSS(AccelF* acc) {
+bool StableBMA::getAccelMPSS(AccelF *acc)
+{
     if (isBma530())
     {
         Accel accR;
-        if(getAccel(&accR) == false) {
+        if (getAccel(&accR) == false)
+        {
             DEBUG("Failed to get regular acc");
             return false;
         }
