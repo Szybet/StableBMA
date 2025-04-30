@@ -1077,7 +1077,12 @@ bool StableBMA::defaultConfig4(bool LowPower)
     }
     cfg.range = BMA4_ACCEL_RANGE_2G;
     cfg.bandwidth = BMA4_ACCEL_NORMAL_AVG4;
-    cfg.perf_mode = (LowPower ? BMA4_CIC_AVG_MODE : BMA4_CONTINUOUS_MODE); // Testing for Low Power done by Michal Szczepaniak
+    // Testing for Low Power done by Michal Szczepaniak
+    if (LowPower) {
+        cfg.perf_mode = BMA4_CIC_AVG_MODE;
+    } else {
+        cfg.perf_mode = BMA4_CONTINUOUS_MODE;
+    }
 
     if (StableBMA::setAccelConfig(cfg))
     {
@@ -1132,9 +1137,9 @@ bool StableBMA::defaultConfig5(bool LowPower)
     }
 
     // LowPower not implemented (I think it's on default now)
-    acc_cfg.acc_odr = BMA5_ACC_ODR_HZ_25;
+    acc_cfg.acc_odr = BMA5_ACC_ODR_HZ_25; // BMA5_ACC_ODR_HZ_1P5625, 30uA diff
     acc_cfg.acc_bwp = BMA5_ACC_BWP_NORM_AVG4;
-    acc_cfg.power_mode = BMA5_POWER_MODE_HPM;
+    acc_cfg.power_mode = BMA5_POWER_MODE_LPM; // Default was BMA5_POWER_MODE_HPM, changed for power consumption
 
     acc_cfg.acc_range = BMA5_ACC_RANGE_MAX_2G;
     acc_cfg.acc_iir_ro = BMA5_ACC_IIR_RO_DB_40;
